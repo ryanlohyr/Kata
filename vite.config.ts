@@ -1,12 +1,13 @@
 import { defineConfig } from "vite";
-import { tanstackStart } from "@tanstack/react-start/plugin";
-import tsconfigPaths from "vite-tsconfig-paths";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
 
 export default defineConfig({
+  server: { port: 3000 },
+  resolve: { tsconfigPaths: true },
   plugins: [
-    tsconfigPaths(),
-    // node-server preset = standalone Node server in .output/server/index.mjs.
-    // Railway runs `node .output/server/index.mjs` as the start command.
-    tanstackStart({ target: "node-server" }),
+    // tanstackStart must come BEFORE viteReact.
+    tanstackStart(),
+    viteReact(),
   ],
 });
