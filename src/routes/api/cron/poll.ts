@@ -1,19 +1,22 @@
-// Cron endpoint — hit this on a schedule (Vercel cron, Supabase pg_cron, GitHub
-// Actions, whatever) to drive polling. Picks up every video whose next_poll_at
-// is in the past, runs them in parallel with a small concurrency cap.
+// Cron endpoint — hit this on a schedule to drive polling. Picks up every video
+// whose next_poll_at is in the past and runs them with concurrency 5.
 //
 // Auth: pass header `Authorization: Bearer ${CRON_SECRET}`.
 
-import { createServerFileRoute } from "@tanstack/react-start/server";
+import { createFileRoute } from "@tanstack/react-router";
 import { supabaseServer } from "~/lib/supabase";
 import { pollVideo, type VideoRow } from "~/server/poll";
 
 const CONCURRENCY = 5;
 const BATCH_SIZE = 100;
 
-export const ServerRoute = createServerFileRoute("/api/cron/poll").methods({
-  GET: async ({ request }) => handle(request),
-  POST: async ({ request }) => handle(request),
+export const Route = createFileRoute("/api/cron/poll")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => handle(request),
+      POST: async ({ request }) => handle(request),
+    },
+  },
 });
 
 async function handle(request: Request): Promise<Response> {
@@ -54,7 +57,6 @@ async function handle(request: Request): Promise<Response> {
   });
 }
 
-// Tiny concurrency pool — keeps Decodo from getting hammered when batches are large.
 async function runPool<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = [];
   let i = 0;
