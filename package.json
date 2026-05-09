@@ -9,16 +9,22 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",
-    "start": "node .output/server/index.mjs",
+    "start": "node dist/server/server.js",
     "typecheck": "tsc --noEmit",
-    "poll:once": "tsx scripts/poll-once.ts"
+    "poll:once": "tsx scripts/poll-once.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.0",
     "@tanstack/react-router": "^1.95.0",
     "@tanstack/react-start": "^1.95.0",
     "@tanstack/router-plugin": "^1.95.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "dotenv": "^16.4.0",
+    "drizzle-orm": "^0.36.0",
+    "postgres": "^3.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.13.0",
@@ -31,6 +37,7 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0"
+    "@types/react-dom": "^19.0.0",
+    "drizzle-kit": "^0.28.0"
   }
 }

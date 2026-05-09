@@ -4,8 +4,9 @@
 // Auth: pass header `Authorization: Bearer ${CRON_SECRET}`.
 
 import { createFileRoute } from "@tanstack/react-router";
-import { supabaseServer } from "~/lib/supabase";
-import { pollVideo, type VideoRow } from "~/server/poll";
+import { and, asc, eq, lte } from "drizzle-orm";
+import { db, schema } from "~/db";
+import { pollVideo } from "~/server/poll";
 
 const CONCURRENCY = 5;
 const BATCH_SIZE = 100;
@@ -26,26 +27,24 @@ async function handle(request: Request): Promise<Response> {
     return new Response("unauthorized", { status: 401 });
   }
 
-  const sb = supabaseServer();
-  const { data, error } = await sb
-    .from("videos")
-    .select("id, platform, external_id, url, first_seen_at, last_polled_at, consecutive_errors")
-    .eq("poll_status", "active")
-    .lte("next_poll_at", new Date().toISOString())
-    .order("next_poll_at", { ascending: true })
+  const d = db();
+  const videos = await d
+    .select()
+    .from(schema.videos)
+    .where(and(eq(schema.videos.pollStatus, "active"), lte(schema.videos.nextPollAt, new Date())))
+    .orderBy(asc(schema.videos.nextPollAt))
     .limit(BATCH_SIZE);
-
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-  const videos = (data ?? []) as VideoRow[];
 
   const results = await runPool(videos, CONCURRENCY, async (v) => {
     try {
       await pollVideo(v);
       return { id: v.id, ok: true as const };
     } catch (err) {
-      return { id: v.id, ok: false as const, error: err instanceof Error ? err.message : String(err) };
+      return {
+        id: v.id,
+        ok: false as const,
+        error: err instanceof Error ? err.message : String(err),
+      };
     }
   });
 

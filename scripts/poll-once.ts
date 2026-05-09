@@ -1,33 +1,31 @@
 // One-shot polling script for local dev / Mac launchd / a plain crontab entry.
 // Usage:  tsx scripts/poll-once.ts
-// Reads .env from the project root and polls every video that's due.
 
 import "dotenv/config";
-import { supabaseServer } from "../src/lib/supabase";
-import { pollVideo, type VideoRow } from "../src/server/poll";
+import { and, asc, eq, lte } from "drizzle-orm";
+import { db, schema } from "../src/db";
+import { pollVideo } from "../src/server/poll";
 
 async function main() {
-  const sb = supabaseServer();
-  const { data, error } = await sb
-    .from("videos")
-    .select("id, platform, external_id, url, first_seen_at, last_polled_at, consecutive_errors")
-    .eq("poll_status", "active")
-    .lte("next_poll_at", new Date().toISOString())
-    .order("next_poll_at", { ascending: true })
+  const d = db();
+  const videos = await d
+    .select()
+    .from(schema.videos)
+    .where(and(eq(schema.videos.pollStatus, "active"), lte(schema.videos.nextPollAt, new Date())))
+    .orderBy(asc(schema.videos.nextPollAt))
     .limit(100);
-  if (error) throw error;
 
-  const videos = (data ?? []) as VideoRow[];
   console.log(`polling ${videos.length} videos`);
 
   for (const v of videos) {
     try {
       await pollVideo(v);
-      console.log(`  ✓ ${v.platform} ${v.external_id}`);
+      console.log(`  ✓ ${v.platform} ${v.externalId}`);
     } catch (err) {
-      console.log(`  ✗ ${v.platform} ${v.external_id}: ${(err as Error).message}`);
+      console.log(`  ✗ ${v.platform} ${v.externalId}: ${(err as Error).message}`);
     }
   }
+  process.exit(0);
 }
 
 main().catch((e) => {
